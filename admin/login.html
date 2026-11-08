@@ -47,7 +47,7 @@
     await client.auth.signOut();
     throw new Error('This account does not have administrator permissions.');
    }
-   message.textContent = 'Signed in successfully. Admin dashboard setup is the next step.';
+   window.location.href = 'dashboard.html';
   } catch (error) {
    message.textContent = error.message || 'Unable to sign in. Please try again.';
   } finally { button.disabled = false; }
