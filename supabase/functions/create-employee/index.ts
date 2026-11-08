@@ -72,6 +72,7 @@ Deno.serve(async (req: Request) => {
   if (joiningDate && !/^\d{4}-\d{2}-\d{2}$/.test(joiningDate)) return response({ error: "Joining date must use YYYY-MM-DD format." }, 400);
 
   const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
+    redirectTo: "https://samruddhikunjir14.github.io/Precise_engineering_services_final/employee/login.html",
     data: { full_name: fullName, employee_code: employeeCode },
   });
   if (inviteError || !inviteData.user) {
