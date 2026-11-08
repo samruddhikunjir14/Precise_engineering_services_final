@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admin Dashboard | Precise Engineering Services</title><link rel="stylesheet" href="../portal.css"></head>
+<body class="admin-page"><main class="portal dashboard">
+<header class="dashboard-top"><div class="brand"><span class="logo">PES</span><span><strong>PRECISE ENGINEERING</strong><small>SERVICES · PUNE, INDIA</small></span></div><button id="signout" type="button">Sign out</button></header>
+<div class="dashboard-heading"><div><div class="eyebrow">Administrator Portal</div><h1>Admin Dashboard</h1><p id="status" class="muted">Verifying administrator access…</p></div></div>
+<div class="notice"><strong>Account creation is not enabled yet.</strong><br>This dashboard currently provides a read-only overview. Employee registration will be enabled after the secure server-side account-creation function is installed and tested. Never place a Supabase secret key in this website.</div>
+<section class="panel" id="add-employee-panel"><h2>Add a new employee</h2><p class="panel-intro">Enter the employee details. The employee will receive an email invitation to set their password.</p>
+<form id="employee-form" class="employee-form">
+<div class="form-grid">
+<label>Full name<input name="full_name" required minlength="2" maxlength="120" autocomplete="name" placeholder="Employee full name"></label>
+<label>Employee ID<input name="employee_code" required minlength="2" maxlength="30" pattern="[A-Za-z0-9_-]+" placeholder="e.g. PES-001"></label>
+<label>Work email<input name="email" type="email" required autocomplete="email" placeholder="employee@company.com"></label>
+<label>Department<input name="department" maxlength="80" placeholder="e.g. Engineering"></label>
+<label>Designation<input name="designation" maxlength="80" placeholder="e.g. CAD Engineer"></label>
+<label>Joining date<input name="joining_date" type="date"></label>
+</div>
+<button id="add-employee-button" type="submit">Send employee invitation</button>
+<p id="employee-form-message" class="form-message" role="status" aria-live="polite"></p>
+</form></section>\n<section class="stats" aria-label="Company overview">
+<div class="stat"><span>Total employees</span><strong id="employee-count">—</strong></div>
+<div class="stat"><span>Active employees</span><strong id="active-count">—</strong></div>
+<div class="stat"><span>Attendance records</span><strong id="attendance-count">—</strong></div>
+</section>
+<section class="panel"><h2>Employee directory</h2><p class="panel-intro">Employee records visible to authorized administrators.</p><div class="table-wrap"><table><thead><tr><th>Employee ID</th><th>Name</th><th>Department</th><th>Designation</th><th>Status</th></tr></thead><tbody id="employee-rows"><tr><td colspan="5" class="empty-row">Loading employees…</td></tr></tbody></table></div></section>
+<section class="panel"><h2>Recent attendance</h2><p class="panel-intro">Latest attendance entries recorded in the database.</p><div class="table-wrap"><table><thead><tr><th>Employee ID</th><th>Date</th><th>Check in</th><th>Check out</th></tr></thead><tbody id="attendance-rows"><tr><td colspan="4" class="empty-row">Loading attendance…</td></tr></tbody></table></div></section>
+<footer class="foot">Precise Engineering Services · Pune, India</footer>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="../portal-config.js"></script>
+<script>
+(async function(){
+ const status=document.getElementById('status');
+ const setMessage=(id,message,span)=>{const row=document.createElement('tr');const cell=document.createElement('td');cell.colSpan=span;cell.className='empty-row';cell.textContent=message;row.appendChild(cell);document.getElementById(id).replaceChildren(row);};
+ if(!window.supabase||!window.PES_SUPABASE_URL||!window.PES_SUPABASE_PUBLISHABLE_KEY){status.textContent='Portal configuration is incomplete.';return;}
+ const client=window.supabase.createClient(window.PES_SUPABASE_URL,window.PES_SUPABASE_PUBLISHABLE_KEY);
+ const {data:{session},error:sessionError}=await client.auth.getSession();
+ if(sessionError||!session){window.location.replace('login.html');return;}
+ const {data:role,error:roleError}=await client.from('user_roles').select('role').eq('user_id',session.user.id).maybeSingle();
+ if(roleError||!role||role.role!=='admin'){await client.auth.signOut();window.location.replace('login.html');return;}
+ status.textContent='Signed in as '+session.user.email;
+ document.getElementById('signout').addEventListener('click',async()=>{await client.auth.signOut();window.location.replace('login.html');});
+ const employeeForm=document.getElementById('employee-form');
+ employeeForm.addEventListener('submit',async(event)=>{
+   event.preventDefault();
+   const button=document.getElementById('add-employee-button');
+   const message=document.getElementById('employee-form-message');
+   const values=Object.fromEntries(new FormData(employeeForm).entries());
+   button.disabled=true; button.textContent='Sending invitation…'; message.textContent='';
+   const {data,error}=await client.functions.invoke('create-employee',{body:values});
+   if(error){message.textContent=error.message||'Could not create employee. Check that the Edge Function is deployed.';message.className='form-message error';}
+   else if(data?.error){message.textContent=data.error;message.className='form-message error';}
+   else{message.textContent=data?.message||'Employee invitation sent.';message.className='form-message success';employeeForm.reset();}
+   button.disabled=false;button.textContent='Send employee invitation';
+ });
+ const [employeesResult,attendanceResult]=await Promise.all([
+   client.from('employees').select('id,employee_code,full_name,department,designation,is_active').order('created_at',{ascending:false}),
+   client.from('attendance').select('employee_id,attendance_date,check_in_at,check_out_at').order('check_in_at',{ascending:false}).limit(10)
+ ]);
+ if(employeesResult.error){setMessage('employee-rows','Could not load employees: '+employeesResult.error.message,5);}
+ else{
+   const employees=employeesResult.data||[];
+   document.getElementById('employee-count').textContent=employees.length;
+   document.getElementById('active-count').textContent=employees.filter(e=>e.is_active).length;
+   const body=document.getElementById('employee-rows');
+   if(!employees.length)setMessage('employee-rows','No employee records yet.',5);
+   else body.replaceChildren(...employees.map(e=>{const tr=document.createElement('tr');[e.employee_code,e.full_name,e.department||'—',e.designation||'—'].forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.appendChild(td);});const td=document.createElement('td');const pill=document.createElement('span');pill.className='status-pill'+(e.is_active?'':' inactive');pill.textContent=e.is_active?'Active':'Inactive';td.appendChild(pill);tr.appendChild(td);return tr;}));
+ }
+ if(attendanceResult.error){setMessage('attendance-rows','Could not load attendance: '+attendanceResult.error.message,4);}
+ else{
+   const records=attendanceResult.data||[];
+   document.getElementById('attendance-count').textContent=records.length;
+   const body=document.getElementById('attendance-rows');
+   if(!records.length)setMessage('attendance-rows','No attendance records yet.',4);
+   else body.replaceChildren(...records.map(a=>{const tr=document.createElement('tr');const values=[a.employee_id,a.attendance_date,a.check_in_at?new Date(a.check_in_at).toLocaleTimeString():'—',a.check_out_at?new Date(a.check_out_at).toLocaleTimeString():'Not checked out'];values.forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.appendChild(td);});return tr;}));
+ }
+})();
+</script></body></html>

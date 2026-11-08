@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin Login | Precise Engineering Services</title>
+<link rel="stylesheet" href="../portal.css">
+</head>
+<body>
+<main class="portal">
+<div class="brand"><span class="logo">PES</span><span><strong>PRECISE ENGINEERING</strong><small>SERVICES · PUNE, INDIA</small></span></div>
+<div class="eyebrow">Administrator Portal</div><h1>Admin Login</h1>
+<p class="muted">Authorized access for company administration and employee management.</p>
+<form id="login-form">
+<label for="email">Administrator email</label><input id="email" type="email" autocomplete="username" placeholder="admin@example.com" required>
+<label for="password">Password</label><input id="password" type="password" autocomplete="current-password" placeholder="Your password" required>
+<button id="submit-button" type="submit">Sign in</button>
+<p id="message" class="muted" role="status" aria-live="polite"></p>
+</form>
+<div class="links"><a href="../employee/login.html">Employee login</a><a href="../index.html">← Back to company website</a></div>
+<div class="foot">Only authorized administrators can create employee accounts and manage attendance.</div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../portal-config.js"></script>
+<script>
+(function () {
+ const form = document.getElementById('login-form');
+ const message = document.getElementById('message');
+ const button = document.getElementById('submit-button');
+ form.addEventListener('submit', async function (event) {
+  event.preventDefault();
+  if (!window.supabase || !window.PES_SUPABASE_URL || window.PES_SUPABASE_URL.includes('PASTE_') ||
+      !window.PES_SUPABASE_PUBLISHABLE_KEY || window.PES_SUPABASE_PUBLISHABLE_KEY.includes('PASTE_')) {
+    message.textContent = 'Portal setup is incomplete. Please contact the administrator.';
+    return;
+  }
+  button.disabled = true; message.textContent = 'Signing in…';
+  try {
+   const client = window.supabase.createClient(window.PES_SUPABASE_URL, window.PES_SUPABASE_PUBLISHABLE_KEY);
+   const { data, error } = await client.auth.signInWithPassword({
+    email: document.getElementById('email').value.trim(),
+    password: document.getElementById('password').value
+   });
+   if (error) throw error;
+   const { data: roleRow, error: roleError } = await client.from('user_roles').select('role').eq('user_id', data.user.id).maybeSingle();
+   if (roleError) throw roleError;
+   if (!roleRow || roleRow.role !== 'admin') {
+    await client.auth.signOut();
+    throw new Error('This account does not have administrator permissions.');
+   }
+   window.location.href = 'dashboard.html';
+  } catch (error) {
+   message.textContent = error.message || 'Unable to sign in. Please try again.';
+  } finally { button.disabled = false; }
+ });
+})();
+</script>
+</body></html>
