@@ -16,6 +16,8 @@
 <button id="submit-button" type="submit">Sign in</button>
 <p id="message" class="muted" role="status" aria-live="polite"></p>
 </form>
+<p style="margin:14px 0 0;font-size:13px"><a id="forgot-link" href="reset-password.html">Forgot password?</a></p>
+<p id="reset-message" class="muted" role="status" aria-live="polite"></p>
 <div class="links"><a href="../employee/login.html">Employee login</a><a href="../index.html">← Back to company website</a></div>
 <div class="foot">Only authorized administrators can create employee accounts and manage attendance.</div>
 </main>
@@ -26,16 +28,16 @@
  const form = document.getElementById('login-form');
  const message = document.getElementById('message');
  const button = document.getElementById('submit-button');
- form.addEventListener('submit', async function (event) {
-  event.preventDefault();
-  if (!window.supabase || !window.PES_SUPABASE_URL || window.PES_SUPABASE_URL.includes('PASTE_') ||
-      !window.PES_SUPABASE_PUBLISHABLE_KEY || window.PES_SUPABASE_PUBLISHABLE_KEY.includes('PASTE_')) {
-    message.textContent = 'Portal setup is incomplete. Please contact the administrator.';
-    return;
+ function getClient() {
+  if (!window.supabase || !window.PES_SUPABASE_URL || !window.PES_SUPABASE_PUBLISHABLE_KEY) {
+   throw new Error('Portal setup is incomplete. Please contact the administrator.');
   }
-  button.disabled = true; message.textContent = 'Signing in…';
+  return window.supabase.createClient(window.PES_SUPABASE_URL, window.PES_SUPABASE_PUBLISHABLE_KEY);
+ }
+ form.addEventListener('submit', async function (event) {
+  event.preventDefault(); button.disabled = true; message.textContent = 'Signing in…';
   try {
-   const client = window.supabase.createClient(window.PES_SUPABASE_URL, window.PES_SUPABASE_PUBLISHABLE_KEY);
+   const client = getClient();
    const { data, error } = await client.auth.signInWithPassword({
     email: document.getElementById('email').value.trim(),
     password: document.getElementById('password').value
@@ -51,6 +53,23 @@
   } catch (error) {
    message.textContent = error.message || 'Unable to sign in. Please try again.';
   } finally { button.disabled = false; }
+ });
+ document.getElementById('forgot-link').addEventListener('click', async function (event) {
+  event.preventDefault();
+  const email = document.getElementById('email').value.trim();
+  const resetMessage = document.getElementById('reset-message');
+  if (!email) { resetMessage.textContent = 'Enter your administrator email above, then click Forgot password.'; document.getElementById('email').focus(); return; }
+  const link = this; link.style.pointerEvents = 'none'; resetMessage.textContent = 'Sending password reset email…';
+  try {
+   const client = getClient();
+   const { error } = await client.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + '/admin/reset-password.html'
+   });
+   if (error) throw error;
+   resetMessage.textContent = 'If this email belongs to an account, a password reset link has been sent. Check your inbox.';
+  } catch (error) {
+   resetMessage.textContent = error.message || 'Could not send the reset email. Please try again.';
+  } finally { link.style.pointerEvents = ''; }
  });
 })();
 </script>
