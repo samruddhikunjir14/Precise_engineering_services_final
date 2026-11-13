@@ -64,14 +64,22 @@ document.getElementById('quoteForm').addEventListener('submit',async e=>{
   button.textContent='Sending...';
   status.textContent='Sending your enquiry securely...';
   try{
-    if(!window.PES_SUPABASE_URL || !window.PES_SUPABASE_PUBLISHABLE_KEY) throw new Error('The enquiry service is not configured yet. Please try again later.');
-    const response=await fetch(window.PES_SUPABASE_URL+'/functions/v1/send-enquiry',{
+    const response=await fetch('https://formsubmit.co/ajax/info@preciseengineeringser.com',{
       method:'POST',
-      headers:{'Content-Type':'application/json','apikey':window.PES_SUPABASE_PUBLISHABLE_KEY,'Authorization':'Bearer '+window.PES_SUPABASE_PUBLISHABLE_KEY},
-      body:JSON.stringify(data)
+      headers:{'Content-Type':'application/json','Accept':'application/json'},
+      body:JSON.stringify({
+        name:data.name,
+        company:data.company,
+        email:data.email,
+        service:data.service,
+        message:data.message,
+        _honey:data.website,
+        _subject:'New website enquiry - Precise Engineering Services',
+        _template:'table'
+      })
     });
     const result=await response.json().catch(()=>({}));
-    if(!response.ok) throw new Error(result.error||'Could not send your enquiry. Please try again.');
+    if(!response.ok || result.success!==true) throw new Error(result.message||'Could not send your enquiry. Please try again.');
     status.textContent='Thank you! Your enquiry has been sent successfully. We will contact you soon.';
     e.currentTarget.reset();
   }catch(error){
