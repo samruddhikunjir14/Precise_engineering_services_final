@@ -39,7 +39,52 @@
 <article class="project"><img src="ramp-slab.jpg" alt="Ramp slab detailing drawing" style="height:auto;aspect-ratio:1.416;object-fit:contain"><div class="project-body"><div class="project-label">CAD &amp; RC</div><h3>Ramp Slab Detailing</h3></div></article>
 </div>
 <p class="note">The five drawing samples use the existing public asset paths from the provided project. For a completely independent GitHub deployment, save the six JPGs in <code>assets/</code> and replace these URLs with local filenames.</p></div></section>
-<section id="contact" class="contact"><div class="container contact-grid"><div><div class="eyebrow">Contact Us</div><h2>Let's discuss your project requirements.</h2><p class="muted">Request a quote, send an email enquiry, or contact us directly through WhatsApp.</p><div class="contact-links"><a href="mailto:info@preciseengineeringser.com">EMAIL · info@preciseengineeringser.com</a><a href="tel:+919881074250">PHONE · +91 98810 74250</a><a href="https://wa.me/919881074250" target="_blank" rel="noopener">WHATSAPP · +91 98810 74250</a></div></div><form id="quoteForm"><h3>Request a Quote / Email Enquiry</h3><label for="name">Your name</label><input id="name" required><label for="company">Company</label><input id="company"><label for="service">Service required</label><select id="service"><option>Façade Shop Drawings</option><option>Glass & Glazing</option><option>IMP Detailing</option><option>Single-Skin Panel Systems</option><option>Structural Modeling</option><option>Lumber Drafting</option><option>CAD &amp; RC Detailing</option><option>Other</option></select><label for="message">Project requirements</label><textarea id="message" required placeholder="Tell us about your project, drawings available and target schedule."></textarea><div class="actions"><button class="btn" type="submit">Send Email Enquiry</button><button class="btn" style="background:#fff;color:var(--navy);border-color:var(--navy)" type="button" id="wa">WhatsApp Message</button></div></form></div></section>
+<section id="contact" class="contact"><div class="container contact-grid"><div><div class="eyebrow">Contact Us</div><h2>Let's discuss your project requirements.</h2><p class="muted">Request a quote, send an email enquiry, or contact us directly through WhatsApp.</p><div class="contact-links"><a href="mailto:info@preciseengineeringser.com">EMAIL · info@preciseengineeringser.com</a><a href="tel:+919881074250">PHONE · +91 98810 74250</a><a href="https://wa.me/919881074250" target="_blank" rel="noopener">WHATSAPP · +91 98810 74250</a></div></div><form id="quoteForm"><h3>Request a Quote / Email Enquiry</h3><label for="name">Your name</label><input id="name" required><label for="company">Company</label><input id="company"><label for="visitorEmail">Your email address</label><input id="visitorEmail" type="email" required autocomplete="email" placeholder="you@example.com"><label for="service">Service required</label><select id="service"><option>Façade Shop Drawings</option><option>Glass & Glazing</option><option>IMP Detailing</option><option>Single-Skin Panel Systems</option><option>Structural Modeling</option><option>Lumber Drafting</option><option>CAD &amp; RC Detailing</option><option>Other</option></select><label for="message">Project requirements</label><input id="website" name="website" type="text" tabindex="-1" autocomplete="off" style="position:absolute;left:-10000px" aria-hidden="true"><textarea id="message" required placeholder="Tell us about your project, drawings available and target schedule."></textarea><div class="actions"><button class="btn" type="submit" id="sendEnquiry">Send Email Enquiry</button><button class="btn" style="background:#fff;color:var(--navy);border-color:var(--navy)" type="button" id="wa">WhatsApp Message</button></div><p id="formStatus" role="status" aria-live="polite" class="muted"></p></form></div></section>
 </main><footer><div class="container">© 2026 Precise Engineering Services · Pune, Maharashtra, India</div></footer>
-<script>const EMAIL='info@preciseengineeringser.com',WA='919881074250';function enquiry(){return `Hello Precise Engineering Services,\n\nName: ${document.getElementById('name').value.trim()}\nCompany: ${document.getElementById('company').value.trim()||'Not provided'}\nService: ${document.getElementById('service').value}\n\nProject requirements:\n${document.getElementById('message').value.trim()}\n\nThank you.`}document.getElementById('quoteForm').addEventListener('submit',e=>{e.preventDefault();location.href=`mailto:${EMAIL}?subject=${encodeURIComponent('Request for Quote - Precise Engineering Services')}&body=${encodeURIComponent(enquiry())}`});document.getElementById('wa').addEventListener('click',()=>window.open(`https://wa.me/${WA}?text=${encodeURIComponent(enquiry())}`,'_blank'));</script>
+<script src="portal-config.js"></script>
+<script>
+const WA='919881074250';
+function enquiry(){
+  return {
+    name:document.getElementById('name').value.trim(),
+    company:document.getElementById('company').value.trim(),
+    email:document.getElementById('visitorEmail').value.trim(),
+    service:document.getElementById('service').value,
+    message:document.getElementById('message').value.trim(),
+    website:document.getElementById('website').value.trim()
+  };
+}
+document.getElementById('quoteForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const button=document.getElementById('sendEnquiry');
+  const status=document.getElementById('formStatus');
+  const data=enquiry();
+  if(!e.currentTarget.reportValidity()) return;
+  button.disabled=true;
+  button.textContent='Sending...';
+  status.textContent='Sending your enquiry securely...';
+  try{
+    if(!window.PES_SUPABASE_URL || !window.PES_SUPABASE_PUBLISHABLE_KEY) throw new Error('The enquiry service is not configured yet. Please try again later.');
+    const response=await fetch(window.PES_SUPABASE_URL+'/functions/v1/send-enquiry',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':window.PES_SUPABASE_PUBLISHABLE_KEY,'Authorization':'Bearer '+window.PES_SUPABASE_PUBLISHABLE_KEY},
+      body:JSON.stringify(data)
+    });
+    const result=await response.json().catch(()=>({}));
+    if(!response.ok) throw new Error(result.error||'Could not send your enquiry. Please try again.');
+    status.textContent='Thank you! Your enquiry has been sent successfully. We will contact you soon.';
+    e.currentTarget.reset();
+  }catch(error){
+    status.textContent=error.message||'Something went wrong. Please try again or contact us through WhatsApp.';
+  }finally{
+    button.disabled=false;
+    button.textContent='Send Email Enquiry';
+  }
+});
+document.getElementById('wa').addEventListener('click',()=>{
+  const d=enquiry();
+  const message='Hello Precise Engineering Services,\n\nName: '+d.name+'\nCompany: '+(d.company||'Not provided')+'\nEmail: '+d.email+'\nService: '+d.service+'\n\nProject requirements:\n'+d.message;
+  window.open('https://wa.me/'+WA+'?text='+encodeURIComponent(message),'_blank');
+});
+</script>
 </body></html>
